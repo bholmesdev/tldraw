@@ -1,5 +1,13 @@
-import { HistoryEntry, MigrationSequence, SerializedStore, Store, StoreSchema } from '@tldraw/store'
-import { SchemaPropsInfo, TLRecord, TLStore, TLStoreProps, createTLSchema } from '@tldraw/tlschema'
+import { HistoryEntry, MigrationSequence, SerializedStore, StoreSchema } from '@tldraw/store'
+import {
+	SchemaPropsInfo,
+	TLAssetStore,
+	TLRecord,
+	TLStore,
+	TLStoreProps,
+	createTLSchema,
+} from '@tldraw/tlschema'
+import { FileHelpers } from '@tldraw/utils'
 import { TLAnyBindingUtilConstructor, checkBindings } from './defaultBindings'
 import { TLAnyShapeUtilConstructor, checkShapesAndAddCore } from './defaultShapes'
 
@@ -8,6 +16,7 @@ export type TLStoreOptions = {
 	initialData?: SerializedStore<TLRecord>
 	defaultName?: string
 	id?: string
+	assets?: Partial<TLAssetStore>
 } & (
 	| {
 			shapeUtils?: readonly TLAnyShapeUtilConstructor[]
@@ -20,6 +29,12 @@ export type TLStoreOptions = {
 /** @public */
 export type TLStoreEventInfo = HistoryEntry<TLRecord>
 
+/** @public */
+export const defaultAssetManager: TLAssetStore = {
+	upload: (_, file) => FileHelpers.blobToDataUrl(file),
+	resolve: (asset) => asset.props.src,
+}
+
 /**
  * A helper for creating a TLStore.
  *
@@ -30,6 +45,7 @@ export function createTLStore({
 	initialData,
 	defaultName = '',
 	id,
+	assets,
 	...rest
 }: TLStoreOptions = {}): TLStore {
 	const schema =
@@ -49,12 +65,16 @@ export function createTLStore({
 					migrations: 'migrations' in rest ? rest.migrations : undefined,
 				})
 
-	return new Store({
+	return new TLStore({
 		id,
 		schema,
 		initialData,
 		props: {
 			defaultName,
+			assets: {
+				...defaultAssetManager,
+				...assets,
+			},
 		},
 	})
 }
